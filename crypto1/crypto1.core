@@ -1,0 +1,33 @@
+CAPI=2:
+name: ::crypto1:0.1
+description: Crypto1 cipher parallel attack
+
+filesets:
+    rtl:
+        files:
+            - rtl/Crypto1Attack.sv
+            - rtl/FcEnum.sv
+            - rtl/Crypto1Core.sv
+        file_type : verilogSource
+
+    verilator_tb:
+        depend:
+            - verilator_utils
+        files:
+            - tb/tb.cpp : {file_type : cppSource}
+            
+targets:
+    default: &base
+        filesets: [rtl]
+
+    sim:
+        <<: *base
+        default_tool: verilator
+        description: Simulate Crypto1 attack using verilator
+        filesets: [rtl, verilator_tb]
+        toplevel: [Crypto1Attack]
+        tools:
+            verilator:
+                verilator_options: [-sv, --cc, --trace, --clk, CLK]
+                run_options: [--vcd=sim.vcd, --timeout=20000]
+        
