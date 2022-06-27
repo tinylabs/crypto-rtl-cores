@@ -31,6 +31,11 @@
  * that I may represent.
  */
 
+/**
+ * # Test data
+ * # key=0x27568d75631f
+ * # output=0x5a7be10a7259ef48
+ */ 
 module Crypto1Attack
   (
    input               CLK,
@@ -53,7 +58,7 @@ module Crypto1Attack
                    .RESETn    (RESETn),
                    .EIDX      (i),
                    .OIDX      (j),
-                   .BITSTREAM (BITSTREAM),
+                   .BITSTREAM (48'h5a7be10a7259),
                    .KEY       (KEY)
                    );
               
@@ -61,18 +66,20 @@ module Crypto1Attack
       end
    endgenerate
     */
-   logic [19:0]         out;
-
-   B20Enum #(
-             .IDX (15))
-   u_b20
-   (
-    .CLK (CLK),
-    .RESETn (RESETn),
-    .BIT_IN (1'b0),
-    .STB    (1'b1),
-    .KEY20 (out));
+   logic [47:0]         key;
+   logic                done;
    
+   Crypto1Core #(
+                 .EIDX (5),
+                 .OIDX (0))
+   u_core
+     (
+      .CLK       (CLK),
+      .RESETn    (RESETn),
+      .BITSTREAM (48'h5a7be10a7259),
+      .KEY       (key),
+      .DONE      (done)
+      );
       
 endmodule // Crypto1Attack
 

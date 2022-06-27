@@ -6,7 +6,7 @@ filesets:
     rtl:
         files:
             - rtl/Crypto1Attack.sv
-            - rtl/FcEnum.sv
+            - rtl/B20Enum.sv
             - rtl/Crypto1Core.sv
         file_type : verilogSource
 

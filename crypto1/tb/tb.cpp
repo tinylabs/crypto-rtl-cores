@@ -88,9 +88,6 @@ int main(int argc, char **argv, char **env)
 
 		top->eval();
         top->CLK = !top->CLK;
-        //utils->doJTAGServer (&top->TCK, top->TDO, &top->TDI, top->TMSOE ? &top->TMSOUT : &top->TMSIN, &top->PORESETn);
-        //utils->doGPIOServer ((uint64_t *)&top->IRQ, 16, 0, 0);
-        
 	}
 
 	delete utils;
