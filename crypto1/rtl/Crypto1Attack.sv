@@ -41,6 +41,7 @@ module Crypto1Attack
 
    // Instantiate 256 cores containing all combinations
    // of indices i,j
+   /*
    genvar              i, j;
    generate
       for (i = 0; i < 16; i++) begin
@@ -59,7 +60,20 @@ module Crypto1Attack
          end
       end
    endgenerate
+    */
+   logic [19:0]         out;
 
+   B20Enum #(
+             .IDX (15))
+   u_b20
+   (
+    .CLK (CLK),
+    .RESETn (RESETn),
+    .BIT_IN (1'b0),
+    .STB    (1'b1),
+    .KEY20 (out));
+   
+      
 endmodule // Crypto1Attack
 
                      
