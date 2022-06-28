@@ -24,24 +24,29 @@ module Crypto1Core #(
    // Solutions obtained using espresso (berkeley)
    // NLFA solution (A,B,C,D)
    // (B&!C&!D) | (A&!B&C) | (A&!B&D) | (C&D) = 1
-`define NLFA(x) ((x[2]&~x[1]&~x[0])|(x[3]&~x[2]&x[1])|(x[3]&~x[2]&x[0])|(x[1]&x[0]))
+`define NLFA(A,B,C,D) ((B&~C&~D)|(A&~B&C)|(A&~B&D)|(C&D))
    // NLFB solution (A,B,C,D)
    // (B&C&D) | (A&B&!C) | (!B&C&!D) | (!A&!B&D) = 1
-`define NLFB(x) ((x[2]&x[1]&x[0])|(x[3]&x[2]&~x[1])|(~x[2]&x[1]&~x[0])|(~x[3]&~x[2]&x[0]))
+`define NLFB(A,B,C,D) ((B&C&D)|(~B&C&~D)|(~A&B&~D)|(~A&~B&D))
    // NLFC solution (A,B,C,D,E)
    // (!B&!C&!D&E) | (A&B&D) | (!A&!C&D&E) | (A&!B&!E) | (B&C&E) | (B&C&D) = 1
-`define NLFC(x) ((~x[3]&~x[2]&~x[1]&x[0])|(x[4]&x[3]&x[1])|(~x[4]&~x[2]&x[1]&x[0])|(x[4]&~x[3]&~x[0])|(x[3]&x[2]&x[0])|(x[3]&x[2]&x[1]))
+`define NLFC(A,B,C,D,E) ((~B&~C&~D&E)|(A&B&D)|(~A&~C&D&E)|(A&~B&~E)|(B&C&E)|(B&C&D))
    /*
    function logic Compute (logic [19:0] b)
      return `NLFC (`NLFA (b[19:16]), `NLFB (b[15:12]), `NLFA (b[11:8]), `NLFA (b[7:4]), `NLFB (b[3:0]));
    endfunction
     */
-`define Compute(b) `NLFC( `NLFA(b[19:16]), `NLFB(b[15:12]), `NLFA(b[11:8]), `NLFA(b[7:4]), `NLFB(b[3:0]) )
+`define Compute(b) `NLFC(`NLFA(b[19],b[18],b[17],b[16]), \
+                         `NLFB(b[15],b[14],b[13],b[12]), \
+                         `NLFA(b[11],b[10],b[9],b[8]), \
+                         `NLFA(b[7],b[6],b[5],b[4]), \
+                         `NLFB(b[3],b[2],b[1],b[0]) )
 
    typedef enum logic [2:0] {
                              GENERATE      = 0, // Generate even/odd
-                             EXTENDn       = 1, // Extend 4 bits
-                             WAIT_COMPLETE = 2
+                             EXTEND0       = 1, // Extend 1 bit
+                             EXTENDn       = 2, // Extend 3 bits
+                             WAIT_COMPLETE = 3
                              } state_t;
    
 
@@ -95,6 +100,9 @@ module Crypto1Core #(
              //if (osend
              // State machine
              case (state)
+               default:
+                 state <= GENERATE;
+
                GENERATE:
                  begin
                     gen_stb <= 1;
@@ -116,29 +124,37 @@ module Crypto1Core #(
                     // After 2 each switch states
                     if (cnt == 2)
                       begin
-                         state <= EXTEND1;
+                         state <= EXTENDn;
                          cnt <= 0;
                          bit_ext <= 1;
                       end
                     else 
                       begin
-                         // Add even
-                         if (`Compute( '{cnt[0], even[20:1]} ))
+                         // Extend even 1 bit
+                         $display ("data: %05h", {cnt[0], even[19:1]});
+                         if (`Compute( {cnt[0], even[19:1]} ) == BITSTREAM[2])
                            begin
-                              ekey[ecnt] = '{3'b0, cnt[0], even[19:0]};
+                              ekey[ecnt] = {3'b0, cnt[0], even[19:0]};
                               ecnt <= ecnt + 1;
                            end
-                         // Add odd
-                         if (`Compute( '{cnt[0], odd[20:1]} ))
+                         // Extend odd 1 bit
+                         if (`Compute( {cnt[0], odd[19:1]} ) == BITSTREAM[3])
                            begin
-                              okey[ocnt] = '{3'b0, cnt[0], odd[19:0]};
+                              okey[ocnt] = {3'b0, cnt[0], odd[19:0]};
                               ocnt <= ocnt + 1;
                            end
                          cnt <= cnt + 1;
                       end
                  end // case: EXTEND0
 
+               EXTENDn:
+                 state <= WAIT_COMPLETE;
+
+               /*
                // Loop over list for the rest of the extensions
+               // Reading data will happem from the inside toward the outside
+               // Writing data from the opposite side in. This allows conserving
+               // memory for intermediate data
                EXTENDn:
                  begin
 
@@ -172,7 +188,7 @@ module Crypto1Core #(
                          cnt <= cnt + 1;
                       end
                  end // case: EXTENDn
-               
+               */
                WAIT_COMPLETE:
                  begin
 
