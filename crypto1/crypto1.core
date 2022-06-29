@@ -8,6 +8,7 @@ filesets:
             - rtl/Crypto1Attack.sv
             - rtl/B20Enum.sv
             - rtl/Crypto1Core.sv
+            - rtl/GenSubkey.sv
         file_type : verilogSource
 
     verilator_tb:

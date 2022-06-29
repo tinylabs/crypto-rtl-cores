@@ -17,7 +17,8 @@ module B20Enum
     input               RESETn,
     input               BIT_IN,
     input               STB,
-    output logic [19:0] KEY20
+    output logic [19:0] KEY20,
+    output logic        DONE
     );
 
    logic [14:0]        ctr;
@@ -81,12 +82,17 @@ module B20Enum
    always @(posedge CLK)
      begin
         if (~RESETn)
-          ctr <= 0;
+          ctr <= 15'b111111111111111;
         else
           begin
              // Increment clock on strobe
-             if (STB)
-               ctr <= ctr + 1;
+             if (ctr == 15'b111111111111111)
+               DONE <= 1;
+             else if (STB)
+               begin
+                  ctr <= ctr + 1;
+                  DONE <= 0;
+               end
           end
      end
 endmodule // B20Enum
