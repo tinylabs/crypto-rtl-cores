@@ -43,13 +43,19 @@ module Crypto1Core #(
                          `NLFB(b[3],b[2],b[1],b[0]) )
 
    typedef enum logic [2:0] {
-                             GENERATE      = 0, // Generate even/odd
-                             EXTEND0       = 1, // Extend 1 bit
-                             EXTENDn       = 2, // Extend 3 bits
-                             WAIT_COMPLETE = 3
+                             GENERATE      = 0, // Generate even/odd subkeys
+                             EXTEND1       = 1, // Extend 1st bit
+                             EXTEND2       = 2, // Extend 2nd bit
+                             EXTEND3       = 3, // Extend 3rd bit
+                             EXTEND4       = 4, // Extend 4th bit
+                             WAIT_COMPLETE = 5
                              } state_t;
    
-
+   typedef enum logic {
+                       PROCESS_UP = 0,
+                       PROCESS_DN = 1
+                       } dir_t;
+   
    // Housekeeping
    state_t      state;
    logic        gen_stb;
@@ -57,10 +63,12 @@ module Crypto1Core #(
    // Keep list of potential keys
    logic [23:0] ekey[16];
    logic [23:0] okey[16];
-   logic [3:0]  eidx, ecnt, esent;
-   logic [3:0]  oidx, ocnt, osent;
-   logic [3:0]  cnt;
-   logic [2:0]  bit_ext;
+   logic [3:0]  ecnt, ocnt;
+   logic signed [5:0] eidx, oidx;   
+   logic [4:0]  cnt;
+
+   // Direction to process during extension
+   dir_t dir;
    
    // Even bit generation
    logic [23:0]         even;
@@ -106,17 +114,15 @@ module Crypto1Core #(
                GENERATE:
                  begin
                     gen_stb <= 1;
-                    state <= EXTEND0;
+                    state <= EXTEND1;
                     cnt <= 0;
                     eidx <= 0;
                     ecnt <= 0;
                     oidx <= 0;
                     ocnt <= 0;
-                    esent <= 0;
-                    osent <= 0;
                  end
 
-               EXTEND0:
+               EXTEND1:
                  begin
                     // Clear strobe
                     gen_stb <= 0;
@@ -124,71 +130,189 @@ module Crypto1Core #(
                     // After 2 each switch states
                     if (cnt == 2)
                       begin
-                         state <= EXTENDn;
-                         cnt <= 0;
-                         bit_ext <= 1;
+                         // Continue if at least one extension worked
+                         if ((ecnt > 0) || (ocnt > 0))
+                           begin
+                              state <= EXTEND2;
+                              eidx <= 6'(ecnt) - 1;
+                              oidx <= 6'(ocnt) - 1;
+                              ecnt <= 0;
+                              ocnt <= 0;
+                           end
+                         // No valid extensions, generate next
+                         else
+                           state <= GENERATE;
                       end
                     else 
                       begin
                          // Extend even 1 bit
-                         $display ("data: %05h", {cnt[0], even[19:1]});
                          if (`Compute( {cnt[0], even[19:1]} ) == BITSTREAM[2])
                            begin
-                              ekey[ecnt] = {3'b0, cnt[0], even[19:0]};
+                              $display ("1: even: %05h", {cnt[0], even[19:1]});
+                              ekey[ecnt] <= {3'b0, cnt[0], even[19:0]};
                               ecnt <= ecnt + 1;
                            end
                          // Extend odd 1 bit
                          if (`Compute( {cnt[0], odd[19:1]} ) == BITSTREAM[3])
                            begin
-                              okey[ocnt] = {3'b0, cnt[0], odd[19:0]};
+                              $display ("1: odd: %05h", {cnt[0], odd[19:1]});
+                              okey[ocnt] <= {3'b0, cnt[0], odd[19:0]};
                               ocnt <= ocnt + 1;
                            end
                          cnt <= cnt + 1;
                       end
                  end // case: EXTEND0
 
-               EXTENDn:
-                 state <= WAIT_COMPLETE;
-
-               /*
-               // Loop over list for the rest of the extensions
-               // Reading data will happem from the inside toward the outside
-               // Writing data from the opposite side in. This allows conserving
-               // memory for intermediate data
-               EXTENDn:
+               // Extend second bit
+               EXTEND2:
                  begin
 
-                    // All done, generate next
-                    if (bit_ext == 4)
-                      state <= WAIT_COMPLETE;
-                    // Bit extension done, next bit
-                    else if ((eidx == ecnt) && (oidx == ocnt))
+                    // Check if both are done
+                    if ((eidx < 0) && (oidx < 0))
                       begin
-                         bit_ext <= bit_ext + 1;        
-                         cnt <= 0;
-                         eidx <= 0;
-                         oidx <= 0;
-                      end
-                    else
-                      begin
-                          // Add even
-                         if (`Compute( '{cnt[0], ekey[20+bit_ext:1+bit_ext][eidx]} ))
+                         // No progess, back to generate
+                         if ((ocnt == 0) && (ecnt == 0))
+                           state <= GENERATE;
+                         else
                            begin
-                              ekey[ecnt] = '{bit_ext{{0}}, cnt[0], ekey[20+bit_ext:0][eidx]};
-                              ecnt <= ecnt + 1;
-                              eidx <= eidx + 1;
+                              state <= EXTEND3;
+                              oidx <= 15 - 6'(ocnt);
+                              eidx <= 15 - 6'(ecnt);
+                              ocnt <= 0;
+                              ecnt <= 0;
                            end
-                         // Add odd
-                         if (`Compute ('{cnt[0], okey[20+bit_ext:1+bit_ext][oidx]} ))
+                      end
+                    else 
+                      begin
+                         if (eidx > 0)
                            begin
-                              okey[ocnt] = okey[20+bit_ext:1+bit_ext][odix]};
-                              ocnt <= ocnt + 1;
-                              oidx <= oidx + 1;
+                              // Extend even 1 bit
+                              if (`Compute( {cnt[0], ekey[eidx[3:0]][20:2]} ) == BITSTREAM[4])
+                                begin
+                                   $display ("2: even: %05h", {cnt[0], ekey[eidx[3:0]][20:2]});
+                                   ekey[15 - ecnt] <= {2'b0, cnt[0], ekey[eidx[3:0]][20:0]};
+                                   ecnt <= ecnt + 1;
+                                end
+                           end
+                         if (oidx > 0)
+                           begin
+                              // Extend odd 1 bit
+                              if (`Compute( {cnt[0], okey[oidx[3:0]][20:2]} ) == BITSTREAM[5])
+                                begin
+                                   $display ("2: odd: %05h", {cnt[0], okey[oidx[3:0]][20:2]});
+                                   okey[15 - ocnt] <= {2'b0, cnt[0], okey[oidx[3:0]][20:0]};
+                                   ocnt <= ocnt + 1;
+                                end
                            end
                          cnt <= cnt + 1;
+                         if (cnt[0])
+                           begin
+                              eidx <= eidx - 1;
+                              oidx <= oidx - 1;
+                           end
                       end
-                 end // case: EXTENDn
-               */
+                 end // case: EXTEND2
+
+               // Extend third bit
+               EXTEND3:
+                 begin
+
+                    // Check if both are done
+                    if ((eidx > 15) && (oidx > 15))
+                      begin
+                         // No progess, back to generate
+                         if ((ocnt == 0) && (ecnt == 0))
+                           state <= GENERATE;
+                         else
+                           begin
+                              state <= EXTEND4;
+                              oidx <= 6'(ocnt) - 1;
+                              eidx <= 6'(ecnt) - 1;
+                              ocnt <= 0;
+                              ecnt <= 0;
+                           end
+                      end
+                    else 
+                      begin
+                         if (eidx < 15)
+                           begin
+                              // Extend even 1 bit
+                              if (`Compute( {cnt[0], ekey[eidx[3:0]][21:3]} ) == BITSTREAM[6])
+                                begin
+                                   $display ("3: even: %05h", {cnt[0], ekey[eidx[3:0]][21:3]});
+                                   ekey[ecnt] <= {1'b0, cnt[0], ekey[eidx[3:0]][21:0]};
+                                   ecnt <= ecnt + 1;
+                                end
+                           end
+                         if (oidx < 15)
+                           begin
+                              // Extend odd 1 bit
+                              if (`Compute( {cnt[0], okey[oidx[3:0]][21:3]} ) == BITSTREAM[7])
+                                begin
+                                   $display ("3: odd: %05h", {cnt[0], okey[oidx[3:0]][21:3]});
+                                   okey[ocnt] <= {1'b0, cnt[0], okey[oidx[3:0]][21:0]};
+                                   ocnt <= ocnt + 1;
+                                end
+                           end
+                         cnt <= cnt + 1;
+                         if (cnt[0])
+                           begin
+                              eidx <= eidx + 1;
+                              oidx <= oidx + 1;
+                           end
+                      end
+                 end // case: EXTEND3
+               
+               // Extend fourth bit
+               EXTEND4:
+                 begin
+
+                    // Check if both are done
+                    if ((eidx < 0) && (oidx < 0))
+                      begin
+                         // No progess, back to generate
+                         if ((ocnt == 0) && (ecnt == 0))
+                           state <= GENERATE;
+                         else
+                           begin
+                              state <= WAIT_COMPLETE;
+                              oidx <= 15 - 6'(ocnt);
+                              eidx <= 15 - 6'(ecnt);
+                              //ocnt <= 0;
+                              //ecnt <= 0;
+                           end
+                      end
+                    else 
+                      begin
+                         if (eidx > 0)
+                           begin
+                              // Extend even 1 bit
+                              if (`Compute( {cnt[0], ekey[eidx[3:0]][22:4]} ) == BITSTREAM[8])
+                                begin
+                                   $display ("4: even: %05h", {cnt[0], ekey[eidx[3:0]][22:4]});
+                                   ekey[15 - ecnt] <= {cnt[0], ekey[eidx[3:0]][22:0]};
+                                   ecnt <= ecnt + 1;
+                                end
+                           end
+                         if (oidx > 0)
+                           begin
+                              // Extend odd 1 bit
+                              if (`Compute( {cnt[0], okey[oidx[3:0]][22:4]} ) == BITSTREAM[9])
+                                begin
+                                   $display ("4: odd: %05h", {cnt[0], okey[oidx[3:0]][22:4]});
+                                   okey[15 - ocnt] <= {cnt[0], okey[oidx[3:0]][22:0]};
+                                   ocnt <= ocnt + 1;
+                                end
+                           end
+                         cnt <= cnt + 1;
+                         if (cnt[0])
+                           begin
+                              eidx <= eidx - 1;
+                              oidx <= oidx - 1;
+                           end
+                      end
+                 end // case: EXTEND4
+
                WAIT_COMPLETE:
                  begin
 
