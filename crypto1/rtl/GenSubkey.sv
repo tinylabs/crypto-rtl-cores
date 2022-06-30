@@ -15,7 +15,8 @@ module GenSubkey #(
        output logic [23:0] SUBKEY [16],
        output logic [3:0]  CNT,
        output logic        VALID,
-       input               READY
+       input               READY,
+       output logic        DONE
    );
 
    // Solutions obtained using espresso (berkeley)
@@ -53,7 +54,8 @@ module GenSubkey #(
    // Housekeeping
    state_t      state;
    logic        gen_stb;
-
+   logic        done;
+   
    // Keep list of potential keys
    logic signed [5:0] idx;
    logic [4:0]  ctr;
@@ -70,7 +72,8 @@ module GenSubkey #(
     .RESETn (RESETn),
     .BIT_IN (BITSTREAM[0]),
     .STB    (gen_stb),
-    .KEY20  (k20));
+    .KEY20  (k20),
+    .DONE   (done));
 
    always @(posedge CLK)
      begin
@@ -79,6 +82,7 @@ module GenSubkey #(
              state <= GENERATE;
              gen_stb <= 0;
              VALID <= 0;
+             DONE <= 0;
           end
         else
           begin
@@ -222,6 +226,8 @@ module GenSubkey #(
                               state <= GENERATE;
                               idx <= 15 - 6'(CNT);
                               VALID <= 1;
+                              if (done)
+                                DONE <= 1;
                            end
                       end
                     else

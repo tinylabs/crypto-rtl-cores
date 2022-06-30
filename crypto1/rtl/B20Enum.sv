@@ -72,24 +72,32 @@ module B20Enum
    
    // 15 bit counter arranged as 3 bit index for each function
    // Fb Fa Fa Fb Fa
-   always KEY20 = {Fa[sel[0]][ctr[14:12]], 
-                   Fb[sel[1]][ctr[11:9]],
+   always KEY20 = {Fa[sel[4]][ctr[14:12]], 
+                   Fb[sel[3]][ctr[11:9]],
                    Fa[sel[2]][ctr[8:6]],
-                   Fa[sel[3]][ctr[5:3]],
-                   Fb[sel[4]][ctr[2:0]]};
-                         
-
+                   Fa[sel[1]][ctr[5:3]],
+                   Fb[sel[0]][ctr[2:0]]};
+   
+   logic               started;
+   
    always @(posedge CLK)
      begin
         if (~RESETn)
-          ctr <= 15'b111111111111111;
+          begin
+             ctr <= 15'h7FFF;
+             DONE <= 0;
+             started <= 0;
+          end
         else
           begin
              // Increment clock on strobe
-             if (ctr == 15'b111111111111111)
-               DONE <= 1;
+             if (started && (ctr == 15'h7FFF))
+               begin
+                  DONE <= 1;
+               end
              else if (STB)
                begin
+                  started <= 1;
                   ctr <= ctr + 1;
                   DONE <= 0;
                end

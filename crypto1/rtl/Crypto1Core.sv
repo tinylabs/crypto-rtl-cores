@@ -34,6 +34,7 @@ module Crypto1Core #(
    logic [23:0]            even [16];
    logic [3:0]             ecnt;
    logic                   evalid, eready;
+   logic                   edone;
 
    // Even subkey generator
    GenSubkey #( .IDX (EIDX) )
@@ -48,7 +49,8 @@ module Crypto1Core #(
            .SUBKEY    (even),
            .CNT       (ecnt),
            .VALID     (evalid),
-           .READY     (eready)
+           .READY     (eready),
+           .DONE      (edone)
            );
 
    
@@ -83,7 +85,10 @@ module Crypto1Core #(
 
                COMPARE:
                  begin
-                    state <= GEN_SUBKEY;
+                    if (edone)
+                      $display ("DONE");
+                    else
+                      state <= GEN_SUBKEY;
                  end
              endcase // case (state)
              

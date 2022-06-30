@@ -254,6 +254,7 @@ class EvenPipeline (Pipeline):
             for k in klist:
                 for qi in self.q:
                     qi.put (k)
+                print (hex (k))
                 #self.q[0].put (k)
                 #while not self.q[0].empty():
                 #    time.sleep (0.1)
@@ -361,11 +362,11 @@ class Crypto1Attack:
         
         # Shortcut
         epipe.append (EvenPipeline (5, self.even, q[0:16]))
-        opipe.append (OddPipeline (0, self.odd, self.verify, q[0]))
-        opipe[0].start ()
+        #opipe.append (OddPipeline (0, self.odd, self.verify, q[0]))
+        #opipe[0].start ()
         epipe[0].start ()
         epipe[0].join ()
-        opipe[0].join ()
+        #opipe[0].join ()
         
 
 if __name__ == '__main__':
@@ -437,7 +438,6 @@ if __name__ == '__main__':
         cipher.Output (1)
         cipher.Debug ()
 
-        '''
         # Check that subkeys enumerate
         for x in Enumerator (5, 0):
             if x == 0xe9fc7:
@@ -447,7 +447,6 @@ if __name__ == '__main__':
             if x == 0x6512c:
                 print ('Odd subkey found')
                 break
-        '''
         
         # Check pipeline ops
         pipe = Pipeline (0, [0, 0, 0, 0])
