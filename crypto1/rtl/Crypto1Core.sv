@@ -31,68 +31,28 @@ module Crypto1Core #(
 
    
    // Even subkeys
-   logic [23:0]            even [16];
-   logic [3:0]             ecnt;
-   logic                   evalid, eready;
-   logic                   edone;
+   logic [23:0]            even_rddata;
+   logic                   even_rden, even_rdempty;
+   logic                   even_done;
 
    // Even subkey generator
    GenSubkey #( .IDX (EIDX) )
    u_even (
-           .CLK       (CLK),
-           .RESETn    (RESETn),
-           .BITSTREAM ({BITSTREAM[0], 
-                        BITSTREAM[2],
-                        BITSTREAM[4],
-                        BITSTREAM[6],
-                        BITSTREAM[8]}),
-           .SUBKEY    (even),
-           .CNT       (ecnt),
-           .VALID     (evalid),
-           .READY     (eready),
-           .DONE      (edone)
+           .CLK            (CLK),
+           .RESETn         (RESETn),
+           .BITSTREAM      (5'b00110),
+           .SUBKEY_RDEN    (even_rden),
+           .SUBKEY_RDDATA  (even_rddata),
+           .SUBKEY_RDEMPTY (even_rdempty),
+           .DONE           (even_done)
            );
 
-   
+   // Read when available
+   always even_rden = ~even_rdempty;
+
+   /*
    always @(posedge CLK)
      begin
-        if (~RESETn)
-          begin
-             eready <= 0;
-          end
-        else
-          begin
-
-             case (state)
-
-               default:
-                 state <= GEN_SUBKEY;
-
-               GEN_SUBKEY:
-                 begin
-                    eready <= 1;
-                    state <= WAIT_SUBKEY;
-                 end
-
-               WAIT_SUBKEY:
-                 begin
-                    if (evalid)
-                      begin
-                         eready <= 0;
-                         state <= COMPARE;
-                      end
-                 end
-
-               COMPARE:
-                 begin
-                    if (edone)
-                      $display ("DONE");
-                    else
-                      state <= GEN_SUBKEY;
-                 end
-             endcase // case (state)
-             
-          end
      end
-
+    */
 endmodule // Crypto1Core

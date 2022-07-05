@@ -69,7 +69,7 @@ module B20Enum
    // Index decides Fc input
    logic [4:0]         sel;
    always sel = Fc[BIT_IN][IDX];
-   
+
    // 15 bit counter arranged as 3 bit index for each function
    // Fb Fa Fa Fb Fa
    always KEY20 = {Fa[sel[4]][ctr[14:12]], 
@@ -94,12 +94,15 @@ module B20Enum
              if (started && (ctr == 15'h7FFF))
                begin
                   DONE <= 1;
+                  //$display ("0x%05X", KEY20);
+                  $finish;
                end
              else if (STB)
                begin
                   started <= 1;
                   ctr <= ctr + 1;
                   DONE <= 0;
+                  $display ("Enum: 0x%05X", KEY20);
                end
           end
      end

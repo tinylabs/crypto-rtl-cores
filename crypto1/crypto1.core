@@ -4,14 +4,25 @@ description: Crypto1 cipher parallel attack
 
 filesets:
     rtl:
+        depend:
+            - fifo
         files:
             - rtl/Crypto1Attack.sv
             - rtl/B20Enum.sv
             - rtl/Crypto1Core.sv
             - rtl/GenSubkey.sv
+            - rtl/Crypto1.sv
+            - rtl/crypto1.vh : {is_include_file : true}
         file_type : verilogSource
 
-    verilator_tb:
+    sim_tb:
+        depend:
+            - verilator_utils
+        files:
+            - tb/crypto1_tb.cpp : {file_type : cppSource}
+            - tb/Crypto1_tb.sv  : {file_type : verilogSource}
+            
+    attack_tb:
         depend:
             - verilator_utils
         files:
@@ -21,12 +32,23 @@ targets:
     default: &base
         filesets: [rtl]
 
+    attack:
+        <<: *base
+        default_tool: verilator
+        description: Simulate Crypto1 attack using verilator
+        filesets: [rtl, attack_tb]
+        toplevel: [Crypto1Attack]
+        tools:
+            verilator:
+                verilator_options: [-sv, --cc, --trace, --clk, CLK]
+                run_options: [--vcd=attack.vcd, --timeout=20000]
+
     sim:
         <<: *base
         default_tool: verilator
         description: Simulate Crypto1 attack using verilator
-        filesets: [rtl, verilator_tb]
-        toplevel: [Crypto1Attack]
+        filesets: [rtl, sim_tb]
+        toplevel: [Crypto1_tb]
         tools:
             verilator:
                 verilator_options: [-sv, --cc, --trace, --clk, CLK]
