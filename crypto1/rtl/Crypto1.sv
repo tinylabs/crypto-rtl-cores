@@ -21,6 +21,15 @@ module Crypto1
    // Internal state
    logic [47:0] lfsr;
 
+   // Debug only
+   logic [19:0] subkey;
+   always subkey = {lfsr[38], lfsr[36], lfsr[34], lfsr[32],
+                    lfsr[30], lfsr[28], lfsr[26], lfsr[24],
+                    lfsr[22], lfsr[20], lfsr[18], lfsr[16],
+                    lfsr[14], lfsr[12], lfsr[10], lfsr[8],
+                    lfsr[6],  lfsr[4],  lfsr[2],  lfsr[0]};
+   
+   
    always @(posedge CLK)
      begin
         if (~RESETn)
@@ -38,6 +47,22 @@ module Crypto1
              OUTPUT <= `Compute (lfsr);
              // Debug
              $display ("state: %06x", lfsr);
+             $display ("B20: %05x => %x", 
+                       {lfsr[0],  lfsr[2],  lfsr[4],  lfsr[6],
+                        lfsr[8],  lfsr[10], lfsr[12], lfsr[14],
+                        lfsr[16], lfsr[18], lfsr[20], lfsr[22],
+                        lfsr[24], lfsr[26], lfsr[28], lfsr[30],
+                        lfsr[32], lfsr[34], lfsr[36], lfsr[38]},
+                       {lfsr[40], lfsr[42], lfsr[44], lfsr[46]}
+                       );
+             $display ("B20R: %x <= %05x",
+                       {lfsr[46], lfsr[44], lfsr[42], lfsr[40]},
+                       {lfsr[38], lfsr[36], lfsr[34], lfsr[32],
+                        lfsr[30], lfsr[28], lfsr[26], lfsr[24],
+                        lfsr[22], lfsr[20], lfsr[18], lfsr[16],
+                        lfsr[14], lfsr[12], lfsr[10], lfsr[8],
+                        lfsr[6],  lfsr[4],  lfsr[2],  lfsr[0]});
+             $display ("Compute (subkey)=%d", `ComputeSub (subkey));
              $display ("NLA(%d)=%d", { lfsr[0],lfsr[2],lfsr[4],lfsr[6] },
                        `NLFA(lfsr[0],lfsr[2],lfsr[4],lfsr[6]));
              $display ("NLB(%d)=%d", { lfsr[8],lfsr[10],lfsr[12],lfsr[14] },

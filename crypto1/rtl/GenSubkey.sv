@@ -38,7 +38,7 @@ module GenSubkey #( parameter [3:0] IDX
    // Keep list of potential keys
    logic signed [4:0] idx;
    logic [1:0]  ctr;
-   logic [2:0]  cnt;
+   logic [3:0]  cnt;
    
    // Temp subkey extension buffer
    logic [23:0] subkey [8];
@@ -137,8 +137,8 @@ module GenSubkey #( parameter [3:0] IDX
                          // Extend 1 bit
                          if (`ComputeSub( {k20[18:0], ctr[0]} ) == BITSTREAM[1])
                            begin
-                              $display ("1: %06h", {3'b0, k20[19:0], ctr[0]});
-                              subkey[cnt] <= {3'b0, k20[19:0], ctr[0]};
+                              //$display ("1: %06h", {3'b0, k20[19:0], ctr[0]});
+                              subkey[cnt[2:0]] <= {3'b0, k20[19:0], ctr[0]};
                               cnt <= cnt + 1;
                            end
                          ctr <= ctr + 1;
@@ -164,13 +164,13 @@ module GenSubkey #( parameter [3:0] IDX
                       end
                     else
                       begin
-                         if (idx > 0)
+                         if (idx >= 0)
                            begin
                               // Extend even 1 bit
                               if (`ComputeSub( {subkey[idx[2:0]][18:0], ctr[0]} ) == BITSTREAM[2])
                                 begin
-                                   $display ("2: %06h", {2'b0, subkey[idx[2:0]][20:0], ctr[0]});
-                                   subkey[7 - cnt] <= {2'b0, subkey[idx[2:0]][20:0], ctr[0]};
+                                   //$display ("2: %06h", {2'b0, subkey[idx[2:0]][20:0], ctr[0]});
+                                   subkey[7 - cnt[2:0]] <= {2'b0, subkey[idx[2:0]][20:0], ctr[0]};
                                    cnt <= cnt + 1;
                                 end
                            end
@@ -201,13 +201,13 @@ module GenSubkey #( parameter [3:0] IDX
                       end
                     else
                       begin
-                         if (idx < 7)
+                         if (idx <= 7)
                            begin
                               // Extend even 1 bit                                             
                               if (`ComputeSub( {subkey[idx[2:0]][18:0], ctr[0]} ) == BITSTREAM[3])
                                 begin
-                                   $display ("3: %06h", {1'b0, subkey[idx[2:0]][21:0], ctr[0]});
-                                   subkey[cnt] <= {1'b0, subkey[idx[2:0]][21:0], ctr[0]};
+                                   //$display ("3: %06h", {1'b0, subkey[idx[2:0]][21:0], ctr[0]});
+                                   subkey[cnt[2:0]] <= {1'b0, subkey[idx[2:0]][21:0], ctr[0]};
                                    cnt <= cnt + 1;
                                 end
                            end
@@ -225,13 +225,16 @@ module GenSubkey #( parameter [3:0] IDX
                     // Check if both are done
                     if (idx < 0)
                       begin
+                         // Stop FIFO write
+                         fifo_wren <= 0;
+                         
                          // No progess, back to generate
                          if (cnt == 0)
                            state <= GENERATE;
                          else
                            begin
                               state <= GENERATE;
-                              idx <= 8 - 5'(cnt);
+                              idx <= 0;
                               if (done)
                                 DONE <= 1;
                            end
@@ -241,15 +244,14 @@ module GenSubkey #( parameter [3:0] IDX
                          // Pump fifo until full
                          if (~fifo_wrfull)
                            begin
-                              if (idx > 0)
+                              if (idx >= 0)
                                 begin
-                                   // Extend even 1 bit                                                                                                                             
+                                   // Extend even 1 bit
                                    if (`ComputeSub( {subkey[idx[2:0]][18:0], ctr[0]} ) == BITSTREAM[4])
                                      begin
                                         $display ("4: %06h", {subkey[idx[2:0]][22:0], ctr[0]});
                                         fifo_wrdata <= {subkey[idx[2:0]][22:0], ctr[0]};
                                         fifo_wren <= 1;
-                                        cnt <= cnt + 1;
                                      end
                                    else
                                      fifo_wren <= 0;

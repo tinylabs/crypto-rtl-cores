@@ -72,13 +72,18 @@ module B20Enum
 
    // 15 bit counter arranged as 3 bit index for each function
    // Fb Fa Fa Fb Fa
-   always KEY20 = {Fa[sel[4]][ctr[14:12]], 
-                   Fb[sel[3]][ctr[11:9]],
-                   Fa[sel[2]][ctr[8:6]],
-                   Fa[sel[1]][ctr[5:3]],
-                   Fb[sel[0]][ctr[2:0]]};
+   logic [19:0]        k20;
+   always k20 = {Fa[sel[4]][ctr[14:12]], 
+                 Fb[sel[3]][ctr[11:9]],
+                 Fa[sel[2]][ctr[8:6]],
+                 Fa[sel[1]][ctr[5:3]],
+                 Fb[sel[0]][ctr[2:0]]};
    
    logic               started;
+
+   // TODO: Replace with direct reversed enumeration
+   logic [19:0]        key20;
+   always key20 = {<<{k20}};
    
    always @(posedge CLK)
      begin
@@ -95,6 +100,7 @@ module B20Enum
                begin
                   DONE <= 1;
                   //$display ("0x%05X", KEY20);
+                  KEY20 <= key20;
                   $finish;
                end
              else if (STB)
@@ -102,7 +108,8 @@ module B20Enum
                   started <= 1;
                   ctr <= ctr + 1;
                   DONE <= 0;
-                  $display ("Enum: 0x%05X", KEY20);
+                  KEY20 <= key20;
+                  //$display ("%d: Enum: 0x%05X", ctr, KEY20);
                end
           end
      end

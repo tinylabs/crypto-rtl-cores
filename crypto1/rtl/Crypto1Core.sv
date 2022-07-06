@@ -29,26 +29,46 @@ module Crypto1Core #(
                                         } state_t;
    state_t state;
 
-   
+   /*
    // Even subkeys
    logic [23:0]            even_rddata;
    logic                   even_rden, even_rdempty;
    logic                   even_done;
+
+   // Read when available
+   always even_rden = ~even_rdempty;
 
    // Even subkey generator
    GenSubkey #( .IDX (EIDX) )
    u_even (
            .CLK            (CLK),
            .RESETn         (RESETn),
-           .BITSTREAM      (5'b00110),
+           .BITSTREAM      (5'b01100), // Forward = 00110
            .SUBKEY_RDEN    (even_rden),
            .SUBKEY_RDDATA  (even_rddata),
            .SUBKEY_RDEMPTY (even_rdempty),
            .DONE           (even_done)
            );
+    */
+   // Odd subkeys
+   logic [23:0]            odd_rddata;
+   logic                   odd_rden, odd_rdempty;
+   logic                   odd_done;
 
    // Read when available
-   always even_rden = ~even_rdempty;
+   always odd_rden = ~odd_rdempty;
+
+   // Odd subkey generator
+   GenSubkey #( .IDX (OIDX) )
+   u_odd (
+           .CLK            (CLK),
+           .RESETn         (RESETn),
+           .BITSTREAM      (5'b10011), // Forward = 11001
+           .SUBKEY_RDEN    (odd_rden),
+           .SUBKEY_RDDATA  (odd_rddata),
+           .SUBKEY_RDEMPTY (odd_rdempty),
+           .DONE           (odd_done)
+           );
 
    /*
    always @(posedge CLK)
