@@ -6,7 +6,6 @@
  * 2022
  */
 
-
 module GenSubkey #( parameter [3:0] IDX
                    ) (
                       input               CLK,
@@ -47,11 +46,10 @@ module GenSubkey #( parameter [3:0] IDX
    logic [19:0] k20;
 
    // Fifo signals
-   logic        fifo_wren;
-   logic        fifo_wrfull;
+   logic        fifo_wren, fifo_wrfull, fifo_write;
    logic [23:0] fifo_wrdata;
 
-   
+
    // 20 bit key enumerator
    B20Enum #(
              .IDX (IDX))
@@ -67,7 +65,7 @@ module GenSubkey #( parameter [3:0] IDX
    // Output FIFO
    fifo #(
           .DATA_WIDTH   (24),
-          .DEPTH_WIDTH  (16))
+          .DEPTH_WIDTH  (5))
    u_fifo_subkey
      (
       .clk       (CLK),
@@ -79,8 +77,10 @@ module GenSubkey #( parameter [3:0] IDX
       .rd_data_o (SUBKEY_RDDATA),
       .empty_o   (SUBKEY_RDEMPTY)
       );
+
+   // Suppress writes as soon as fifo is full
+   always fifo_wren = fifo_write & ~fifo_wrfull;
    
-          
    always @(posedge CLK)
      begin
         if (~RESETn)
@@ -99,11 +99,19 @@ module GenSubkey #( parameter [3:0] IDX
 
                GENERATE:
                  begin
+                    // Strobe generated, start producing subkeys
                     if (gen_stb)
                       begin
                          gen_stb <= 0;
                          state <= EXTEND1;
+
+                         // Clear DONE signal
+                         DONE <= 0;
+
+                         //$display ("k20=%05x", k20[19:0]);
                       end
+
+                    // Generate strobe
                     else if (~done)
                       begin
                          gen_stb <= 1;
@@ -111,6 +119,10 @@ module GenSubkey #( parameter [3:0] IDX
                          idx <= 0;
                          cnt <= 0;
                       end
+                    
+                    // End of generation
+                    else
+                      DONE <= 1;                              
                  end
 
                EXTEND1:
@@ -226,18 +238,8 @@ module GenSubkey #( parameter [3:0] IDX
                     if (idx < 0)
                       begin
                          // Stop FIFO write
-                         fifo_wren <= 0;
-                         
-                         // No progess, back to generate
-                         if (cnt == 0)
-                           state <= GENERATE;
-                         else
-                           begin
-                              state <= GENERATE;
-                              idx <= 0;
-                              if (done)
-                                DONE <= 1;
-                           end
+                         fifo_write <= 0;
+                         state <= GENERATE;
                       end
                     else
                       begin
@@ -249,12 +251,12 @@ module GenSubkey #( parameter [3:0] IDX
                                    // Extend even 1 bit
                                    if (`ComputeSub( {subkey[idx[2:0]][18:0], ctr[0]} ) == BITSTREAM[4])
                                      begin
-                                        $display ("4: %06h", {subkey[idx[2:0]][22:0], ctr[0]});
+                                        //$display ("4: %06h", {subkey[idx[2:0]][22:0], ctr[0]});
                                         fifo_wrdata <= {subkey[idx[2:0]][22:0], ctr[0]};
-                                        fifo_wren <= 1;
+                                        fifo_write <= 1;
                                      end
                                    else
-                                     fifo_wren <= 0;
+                                     fifo_write <= 0;
                                 end
                               ctr <= ctr + 1;
                               if (ctr[0])
@@ -262,8 +264,6 @@ module GenSubkey #( parameter [3:0] IDX
                                    idx <= idx - 1;
                                 end
                            end // if (~fifo_wrfull)
-                         else
-                           fifo_wren <= 0;
                       end
                  end // case: EXTEND4
 

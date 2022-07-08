@@ -10,8 +10,7 @@
 
 module B20Enum
   #(
-    parameter [3:0] IDX
-    )
+    parameter [3:0] IDX )
    (
     input               CLK,
     input               RESETn,
@@ -23,29 +22,29 @@ module B20Enum
 
    logic [14:0]        ctr;
 
-   // NLF(a)=0x9E98
+   // NLF(a)=0x9E98 Note: these are bit reversed
    logic [3:0]         Fa [2][8] =
-                       '{
+                       '{  // output=0
                          '{
-                           4'd0, 4'd1, 4'd2, 4'd5,
-                           4'd6, 4'd8, 4'd13, 4'd14
+                           4'd7, 4'd11, 4'd1, 4'd6,
+                           4'd10, 4'd4, 4'd8, 4'd0
                            },
-                         '{
-                           4'd3, 4'd4, 4'd7, 4'd9,
-                           4'd10, 4'd11, 4'd12, 4'd15
+                         '{ // output=1
+                            4'd15, 4'd3, 4'd13, 4'd5,
+                            4'd9, 4'd14, 4'd2, 4'd12
                            }
                          };
 
-   // NLF(b)=0xB48E
+   // NLF(b)=0xB48E Note: these are bit reversed
    logic [3:0]         Fb [2][8] =
-                       '{
+                       '{  // output=0
                          '{
-                           4'd0, 4'd4, 4'd5, 4'd6,
-                           4'd8, 4'd9, 4'd11, 4'd14
+                           4'd7, 4'd13, 4'd9, 4'd1,
+                           4'd6, 4'd10, 4'd2, 4'd0
                            },
-                         '{
-                           4'd1, 4'd2, 4'd3, 4'd7,
-                           4'd10, 4'd12, 4'd13, 4'd15
+                         '{ // output=1
+                            4'd15, 4'd11, 4'd3, 4'd5,
+                            4'd14, 4'd12, 4'd4, 4'd8
                            }
                          };
    
@@ -72,19 +71,15 @@ module B20Enum
 
    // 15 bit counter arranged as 3 bit index for each function
    // Fb Fa Fa Fb Fa
-   logic [19:0]        k20;
-   always k20 = {Fa[sel[4]][ctr[14:12]], 
-                 Fb[sel[3]][ctr[11:9]],
-                 Fa[sel[2]][ctr[8:6]],
-                 Fa[sel[1]][ctr[5:3]],
-                 Fb[sel[0]][ctr[2:0]]};
+   //logic [19:0]        k20;
+   always KEY20 = {Fb[sel[0]][ctr[14:12]], 
+                   Fa[sel[1]][ctr[11:9]],
+                   Fa[sel[2]][ctr[8:6]],
+                   Fb[sel[3]][ctr[5:3]],
+                   Fa[sel[4]][ctr[2:0]]};
    
    logic               started;
 
-   // TODO: Replace with direct reversed enumeration
-   logic [19:0]        key20;
-   always key20 = {<<{k20}};
-   
    always @(posedge CLK)
      begin
         if (~RESETn)
@@ -99,16 +94,13 @@ module B20Enum
              if (started && (ctr == 15'h7FFF))
                begin
                   DONE <= 1;
-                  //$display ("0x%05X", KEY20);
-                  KEY20 <= key20;
-                  $finish;
+                  //$display ("%d: Enum: 0x%05X", ctr, KEY20);
                end
              else if (STB)
                begin
                   started <= 1;
                   ctr <= ctr + 1;
                   DONE <= 0;
-                  KEY20 <= key20;
                   //$display ("%d: Enum: 0x%05X", ctr, KEY20);
                end
           end

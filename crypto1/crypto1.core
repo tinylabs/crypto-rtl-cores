@@ -12,6 +12,7 @@ filesets:
             - rtl/Crypto1Core.sv
             - rtl/GenSubkey.sv
             - rtl/Crypto1.sv
+            - rtl/RingBuf.sv
             - rtl/crypto1.vh : {is_include_file : true}
         file_type : verilogSource
 
@@ -40,7 +41,7 @@ targets:
         toplevel: [Crypto1Attack]
         tools:
             verilator:
-                verilator_options: [-sv, --cc, --trace, --clk, CLK]
+                verilator_options: [-sv, --cc, --trace, --clk, CLK, -O3]
                 run_options: [--vcd=attack.vcd, --timeout=20000]
 
     sim:

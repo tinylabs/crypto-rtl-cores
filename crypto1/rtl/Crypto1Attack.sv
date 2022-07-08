@@ -66,18 +66,20 @@ module Crypto1Attack
       end
    endgenerate
     */
-   logic [47:0]         key;
-   logic                done;
+   logic               done, key_data, key_valid;
+   
    
    Crypto1Core #(
                  .EIDX (5),
-                 .OIDX (0))
+                 .OIDX (0),
+                 .RING_DEPTH (32))
    u_core
      (
       .CLK       (CLK),
       .RESETn    (RESETn),
       .BITSTREAM (48'h5a7be10a7259),
-      .KEY       (key),
+      .KEY_DATA  (key_data),
+      .KEY_VALID (key_valid),
       .DONE      (done)
       );
       
