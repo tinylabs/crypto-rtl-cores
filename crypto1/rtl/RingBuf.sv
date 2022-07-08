@@ -22,12 +22,12 @@ module RingBuf
      input              FIFO_DONE,
      // Client interface
      input              RDEN,
-     output [WIDTH-1:0] RDDATA,
-     output             FULL,
+     output logic [WIDTH-1:0] RDDATA,
+     output logic       FULL,
      // No more data
-     output             DONE,
+     output logic       DONE,
      // End of current ring buffer
-     output             END);
+     output logic       END);
 
    // Create internal buffer of width/depth
    logic [WIDTH-1:0]         data [DEPTH];

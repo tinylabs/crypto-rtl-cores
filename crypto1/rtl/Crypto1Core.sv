@@ -52,7 +52,11 @@ module Crypto1Core #(
    u_even (
            .CLK            (CLK),
            .RESETn         (RESETn),
-           .BITSTREAM      (5'b01100), // Forward = 00110
+           .BITSTREAM      ({BITSTREAM[8],
+                             BITSTREAM[6],
+                             BITSTREAM[4],
+                             BITSTREAM[2],
+                             BITSTREAM[0]}),
            .SUBKEY_RDEN    (efifo_rden),
            .SUBKEY_RDDATA  (efifo_rddata),
            .SUBKEY_RDEMPTY (efifo_rdempty),
@@ -87,7 +91,11 @@ module Crypto1Core #(
    u_odd (
            .CLK            (CLK),
            .RESETn         (RESETn & odd_reset_n),
-           .BITSTREAM      (5'b10011), // Forward = 11001
+           .BITSTREAM      ({BITSTREAM[9],
+                             BITSTREAM[7],
+                             BITSTREAM[5],
+                             BITSTREAM[3],
+                             BITSTREAM[1]}),
            .SUBKEY_RDEN    (ofifo_rden),
            .SUBKEY_RDDATA  (odd_subkey),
            .SUBKEY_RDEMPTY (ofifo_rdempty),
@@ -189,8 +197,7 @@ module Crypto1Core #(
                          ring_rden <= 1;
 
                       end // else: !if(ring_end)
-                    
-                                                                      
+
                  end // case: COMPARE
 
                // Finished searching - Either found key

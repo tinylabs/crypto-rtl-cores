@@ -11,17 +11,18 @@
  *   combine them thus creating a 48 bit potential key.
  * - An XOR check is performed on the combined key to filter
  *   out half the results.
- * - The resulting potential key then extends itself using
- *   the two stage NLF functions to produce and extended
- *   48+n bit LFSR state.
- * - The verify bits [:10+] are then checked to ensure a
- *   match with the known output keystream.
+ * - The resulting 48 bit potential key then gets extended
+ *   to 86 bits using the normal LFSR feeback.
+ * - The remaining 38 output bits are calculated from the
+ *   the full 86bit extended LFSR.
+ * - The verify bits [:10+] are then checked against these
+ *   output bits to see if the key was found.
  * - Matches are then latched onto a shared bus for final
  *   check against the remaining output stream.
  * - 48 bit known output stream required to generate a single
  *   valid key.
- * - The key can then be reversed 48 cycles externally to generate
- *   state SR0.
+ * - The resulting key found will be 10 cycles into the LFSR.
+ *   It can then be rewound 10 cycles using simple XOR rotation.
  * 
  *   This attack follows the algorithm cited in: [CITATION]
  * 
@@ -58,7 +59,7 @@ module Crypto1Attack
                    .RESETn    (RESETn),
                    .EIDX      (i),
                    .OIDX      (j),
-                   .BITSTREAM (48'h5a7be10a7259),
+                   .BITSTREAM ({<<{BITSTREAM}}),
                    .KEY       (KEY)
                    );
               
@@ -77,7 +78,7 @@ module Crypto1Attack
      (
       .CLK       (CLK),
       .RESETn    (RESETn),
-      .BITSTREAM (48'h5a7be10a7259),
+      .BITSTREAM ({<<{48'h5a7be10a7259}}), // Reversed keystream
       .KEY_DATA  (key_data),
       .KEY_VALID (key_valid),
       .DONE      (done)
