@@ -42,48 +42,90 @@ module Crypto1Attack
    input               CLK,
    input               RESETn,
    input [47:0]        BITSTREAM,
-   output logic [47:0] KEY
+   output logic [47:0] KEY,
+   output logic        VALID,
+   output logic        DONE
    );
 
+   logic [255:0]       valid, data, done;
+   logic               key_data, key_clk, all_done;
+   logic [7:0]         select;
+   logic [5:0]         ctr;
+   
    // Instantiate 256 cores containing all combinations
    // of indices i,j
-   /*
    genvar              i, j;
    generate
-      for (i = 0; i < 16; i++) begin
-         for (j = 0; j < 16; j++) 
+//      for (i = 0; i < 16; i++) begin
+//         for (j = 0; j < 16; j++) 
+      for (i = 5; i < 6; i++) begin
+         for (j = 0; j < 1; j++) 
            begin : Crypto1Core
-            Crypto1Core core
+            Crypto1Core #(.EIDX(i), .OIDX(j), .RING_DEPTH(32))
+              core
                   (
                    .CLK       (CLK),
                    .RESETn    (RESETn),
-                   .EIDX      (i),
-                   .OIDX      (j),
-                   .BITSTREAM ({<<{BITSTREAM}}),
-                   .KEY       (KEY)
+                   .BITSTREAM (BITSTREAM),
+                   .KEY_CLK   (key_clk),
+                   .KEY_DATA  (data[(i << 4) | j]),
+                   .KEY_VALID (valid[(i << 4) | j]),
+                   .DONE      (done[(i << 4) | j])
                    );
-              
-         end
+           end
       end
    endgenerate
-    */
-   logic               done, key_data, key_valid;
+
+   // MUX one-hot outputs
+   genvar              k;
+   generate for (k = 0; k < 256; k++)
+     begin : GEN_MUX
+        always @(posedge CLK)
+          if (valid == 2**k)
+            select <= 8'(k);
+     end
+   endgenerate
+
+   // Finished when one core finds key or 
+   // all have finished searching
+   always all_done = |valid | &done;
    
-   
-   Crypto1Core #(
-                 .EIDX (5),
-                 .OIDX (0),
-                 .RING_DEPTH (32))
-   u_core
-     (
-      .CLK       (CLK),
-      .RESETn    (RESETn),
-      .BITSTREAM ({<<{48'h5a7be10a7259}}), // Reversed keystream
-      .KEY_DATA  (key_data),
-      .KEY_VALID (key_valid),
-      .DONE      (done)
-      );
-      
+   // Select corresponding key data
+   always key_data = data[select];
+
+   always @(posedge CLK)
+     if (~RESETn)
+       begin
+          DONE <= 0;
+          VALID <= 0;
+          key_clk <= 0;
+          ctr <= 0;
+       end
+     else
+       begin
+          // Found key
+          if (|valid)
+            begin
+               // Set key as valid
+               VALID <= 1;
+
+               // Clock in key data
+               if (ctr < 48)
+                 begin
+                    ctr <= ctr + 1;
+                    key_clk <= ~key_clk;
+                    if (key_clk)
+                      KEY[0] <= key_data;
+                    else
+                      KEY <= KEY << 1;
+                 end
+            end
+
+          // Key not found
+          else if (&done)
+            DONE <= 1;
+       end
+
 endmodule // Crypto1Attack
 
                      
