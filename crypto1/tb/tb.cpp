@@ -81,6 +81,9 @@ int main(int argc, char **argv, char **env)
     top->CLK = 0;
     top->RESETn = 0;
 	top->trace(utils->tfp, 99);
+
+    // Set bitstream
+    top->BITSTREAM = 0x5a7be10a7259;
     
 	while (utils->doCycle() && !done) {
 		if (utils->getTime() > RESET_TIME)
@@ -88,8 +91,18 @@ int main(int argc, char **argv, char **env)
 
 		top->eval();
         top->CLK = !top->CLK;
+
+        // Break when finished
+        if (top->DONE)
+          break;
 	}
 
+    // Print out key
+    if (top->VALID)
+      printf ("Key found: %llX\n", top->KEY);
+    else
+      printf ("Key not found...\n");
+    
 	delete utils;
 	exit(0);
 }

@@ -21,8 +21,8 @@
  *   check against the remaining output stream.
  * - 48 bit known output stream required to generate a single
  *   valid key.
- * - The resulting key found will be 10 cycles into the LFSR.
- *   It can then be rewound 10 cycles using simple XOR rotation.
+ * - The resulting key found will be 45 cycles into the LFSR.
+ *   It can then be rewound 45 cycles using simple XOR rotation.
  * 
  *   This attack follows the algorithm cited in: [CITATION]
  * 
@@ -35,6 +35,7 @@
 /**
  * # Test data
  * # key=0x27568d75631f
+ * # key_found=ee3de5499562 (45 cycles past SR[0])
  * # output=0x5a7be10a7259ef48
  */ 
 module Crypto1Attack
@@ -50,7 +51,7 @@ module Crypto1Attack
    logic [255:0]       valid, data, done;
    logic               key_data, key_clk, all_done;
    logic [7:0]         select;
-   logic [5:0]         ctr;
+   logic [6:0]         ctr;
    
    // Instantiate 256 cores containing all combinations
    // of indices i,j
@@ -110,15 +111,16 @@ module Crypto1Attack
                VALID <= 1;
 
                // Clock in key data
-               if (ctr < 48)
+               if (ctr < 98)
                  begin
                     ctr <= ctr + 1;
                     key_clk <= ~key_clk;
-                    if (key_clk)
-                      KEY[0] <= key_data;
-                    else
-                      KEY <= KEY << 1;
+                    if (~ctr[0])
+                      KEY <= {KEY[46:0], key_data};
                  end
+               else
+                 // Mark as done
+                 DONE <= 1;
             end
 
           // Key not found

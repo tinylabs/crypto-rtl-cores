@@ -18,14 +18,17 @@ def int2binarr (val, length):
     return (pad + l)
 
 class NLF:
-    def __init__(self, fn, width):
+    def __init__(self, name, fn, width):
         self.fn = fn
         self.width = width
-
+        self.name = name
+        
     def compute (self, val):
         if isinstance(val, list):
             val = binarr2int (val)
-        return 1 if ((1 << val) & self.fn) != 0 else 0
+        _ = 1 if ((1 << val) & self.fn) != 0 else 0
+        #print ('{}({})={}'.format (self.name, val, _))
+        return _
 
     def enum (self, val):
         return [x for x in range (2**self.width) if self.compute(x) == val]
@@ -33,9 +36,9 @@ class NLF:
 class Crypto1:
     def __init__ (self, key):
         self.state = key[::-1]
-        self.nla = NLF(0x9E98, 4)
-        self.nlb = NLF(0xB48E, 4)
-        self.nlc = NLF(0xEC57E80A, 5)
+        self.nla = NLF('NLA', 0x9E98, 4)
+        self.nlb = NLF('NLB', 0xB48E, 4)
+        self.nlc = NLF('NLC', 0xEC57E80A, 5)
 
     def ComputeNLF (self):
         s = self.state
@@ -44,7 +47,8 @@ class Crypto1:
                   self.nla.compute ([s[16], s[18], s[20], s[22]]),
                   self.nla.compute ([s[24], s[26], s[28], s[30]]),
                   self.nlb.compute ([s[32], s[34], s[36], s[38]])]
-        return [self.nlc.compute (layer1), layer1]
+        #return [self.nlc.compute (layer1), layer1]
+        return self.nlc.compute (layer1)
 
     def RNLF (self):
         s = self.state
@@ -74,7 +78,7 @@ class Crypto1:
     def Output (self, cnt):
         _ = []
         for x in range (cnt):
-            b, s = self.ComputeNLF ()
+            b = self.ComputeNLF ()
             _.append (b)
             self.state = [self.XOR ()] + self.state[0:47]
         return _
@@ -165,8 +169,8 @@ class Pipeline (Process):
         self.nlc = NLF(0xEC57E80A, 5)
         self.index = index
         
-    def ComputeNLF (self, val):
-        s = int2binarr (val, 24)
+    def ComputeNLF (self, s):
+        #s = int2binarr (val, 24)
         # Note: This is on split keys (odd/even) hence the indices
         layer1 = [self.nla.compute ([s[0],  s[1],  s[2],  s[3]]),
                   self.nlb.compute ([s[4],  s[5],  s[6],  s[7]]),
@@ -182,47 +186,54 @@ class Pipeline (Process):
             stage3 = []
             stage4 = []
 
-            #print ('Input={}'.format (hex (b0)))
+            ba = int2binarr (b0, 20)
+            print ('Input={}'.format (ba))
             
-            # Check bit10
-            if self.ComputeNLF (b0 >> 1) == bits[0]:
-                stage1.append (b0 >> 1)
-            if self.ComputeNLF ((b0 >> 1) | 0x800000) == bits[0]:
-                stage1.append ((b0 >> 1) | 0x800000)
-            #print ('stage1:')
-            #for x in stage1:
-            #    print ('\t{}'.format (hex(x)))
+            # Check bit0
+            if self.ComputeNLF (ba[0:19] + [0]) == bits[0]:
+                stage1.append (binarr2int (ba[0:20] + [0]))
+            if self.ComputeNLF (ba[0:19] + [1]) == bits[0]:
+                stage1.append (binarr2int (ba[0:20] + [1]))
+            print ('stage1:')
+            for x in stage1:
+                print ('\t{}'.format (hex(x)))
             
             # Check bit1
             for b1 in stage1:
-                if self.ComputeNLF (b1 >> 1)  == bits[1]:
-                    stage2.append (b1 >> 1)
-                if self.ComputeNLF ((b1 >> 1) | 0x800000) == bits[1]:
-                    stage2.append ((b1 >> 1) | 0x800000)
-            #print ('stage2:')
-            #for x in stage2:
-            #    print ('\t{}'.format (hex(x)))
+                ba = int2binarr (b1, 21)
+                if self.ComputeNLF (ba[0:19] + [0])  == bits[1]:
+                    stage2.append (binarr2int (ba[0:21] + [0]))
+                if self.ComputeNLF (ba[0:19] + [1]) == bits[1]:
+                    stage2.append (binarr2int (ba[0:21] + [1]))
+            print ('stage2:')
+            for x in stage2:
+                print ('\t{}'.format (hex(x)))
             
             # Check bit2
             for b2 in stage2:
-                if self.ComputeNLF (b2 >> 1) == bits[2]:
-                    stage3.append (b2 >> 1)
-                if self.ComputeNLF ((b2 >> 1) | 0x800000) == bits[2]:
-                    stage3.append ((b2 >> 1) | 0x800000)
-            #print ('stage3:')
-            #for x in stage3:
-            #    print ('\t{}'.format (hex(x)))
+                ba = int2binarr (b2, 22)
+                if self.ComputeNLF (ba[0:19] + [0])  == bits[1]:
+                    stage3.append (binarr2int (ba[0:22] + [0]))
+                if self.ComputeNLF (ba[0:19] + [1]) == bits[1]:
+                    stage3.append (binarr2int (ba[0:22] + [1]))
+            print ('stage3:')
+            for x in stage3:
+                print ('\t{}'.format (hex(x)))
 
             # Check bit3
             for b3 in stage3:
-                if self.ComputeNLF (b3 >> 1) == bits[3]:
-                    stage4.append (b3 >> 1)
-                if self.ComputeNLF ((b3 >> 1) | 0x800000) == bits[3]:
-                    stage4.append ((b3 >> 1) | 0x800000)
-            #print ('stage4:')
-            #for x in stage4:
-            #    print ('\t{}'.format (hex(x)))
+                ba = int2binarr (b3, 23)
+                if self.ComputeNLF (ba[0:19] + [0])  == bits[1]:
+                    stage4.append (binarr2int (ba[0:23] + [0]))
+                if self.ComputeNLF (ba[0:19] + [1]) == bits[1]:
+                    stage4.append (binarr2int (ba[0:23] + [1]))
+            print ('stage4:')
+            for x in stage4:
+                print ('\t{}'.format (hex(x)))
 
+            # Debug only
+            #sys.exit (0)
+            
             # Return results
             # Stage4 list now contains potentials (up to 8) with enough bits (24) to
             # combine with opposite bits and test using XOR feedback.
@@ -233,8 +244,10 @@ class Pipeline (Process):
         enum = Enumerator (self.index, self.bits[0])
         for b0 in enum:
 
+            print ('Enum: {}'.format(hex (b0)))
+
             # Pad b0 4 bits
-            b0 <<= 4
+            #b0 <<= 4
             
             # Cycle through and compute shifted
             ret = self.ComputeShifted (b0, self.bits[1:5])
@@ -245,7 +258,7 @@ class EvenPipeline (Pipeline):
     def __init__ (self, index, bits=[], q=[]):
         super (EvenPipeline, self).__init__ (index, bits)
         self.q = q
-        
+
     def run (self):
 
         cnt = 0
@@ -254,7 +267,7 @@ class EvenPipeline (Pipeline):
             for k in klist:
                 for qi in self.q:
                     qi.put (k)
-                print (hex (k))
+                print ('=> Passed: {}'.format(hex (k)))
                 #self.q[0].put (k)
                 #while not self.q[0].empty():
                 #    time.sleep (0.1)
@@ -403,12 +416,18 @@ if __name__ == '__main__':
 
     else:
 
+        for n in range (48, 20, -1):
+            cipher = Crypto1 (int2binarr (0xee3de5499562, 48))
+            cipher.Reverse (n)
+            print ('{}: {}'.format(n, hex(binarr2int(cipher.State()[::-1]))))
+        sys.exit (0)
+        
         # Test data
-        # key=0x27568d75631f
-        # output=0x5a7be10a7259ef48
-        nla = NLF(0x9E98, 4)
-        nlb = NLF(0xB48E, 4)
-        nlc = NLF(0xEC57E80A, 5)
+        # key   =0x27568d75631f
+        # output=0x5a7be10a7259
+        nla = NLF('NLA', 0x9E98, 4)
+        nlb = NLF('NLB', 0xB48E, 4)
+        nlc = NLF('NLC', 0xEC57E80A, 5)
         
         print ('NLA(0)={}'.format(nla.enum (0)))
         print ('NLA(1)={}'.format(nla.enum (1)))
@@ -417,7 +436,13 @@ if __name__ == '__main__':
         print ('NLC(0)={}'.format(nlc.enum (0)))
         print ('NLC(1)={}'.format(nlc.enum (1)))
         print ('=========')
-        
+
+        # Compare to RTL output
+        '''
+        for x in Enumerator (5, 0):
+            print ('0x{:05x}'.format(x))
+        sys.exit (0);
+        '''
         
         # Run enumerator tests
         '''
@@ -432,6 +457,14 @@ if __name__ == '__main__':
                 assert (en.Test (x) == 1)
         print ('OK')
         '''
+
+        # Check first 10 states
+        cipher = Crypto1 (int2binarr (0x27568d75631f, 48))
+        for n in range (10):
+            print ('state={}'.format (hex(binarr2int(cipher.State()[::-1]))))
+            x = cipher.Output (1)
+            print (x)
+        
         # Check subkeys
         cipher = Crypto1 (int2binarr (0x27568d75631f, 48))
         cipher.Debug ()
@@ -455,10 +488,10 @@ if __name__ == '__main__':
         for n in range (5):
             state = cipher.State ()[0::2]
             out = cipher.Output (2)
-            state = binarr2int(state)
-            print ('{}: {}'.format (out[0], hex(state)))
+            print ('{}: {} {}'.format (out[0][0], hex(binarr2int(state)), state))
+            print ('NLFC({})={}'.format (out[0][1], out[0][0]))
             #print ('next={} or {}'.format (hex(state>>1), hex((state>>1)|0x80000)))
-            assert (pipe.ComputeNLF (state) == out[0])
+            assert (pipe.ComputeNLF (state[0:20]) == out[0][0])
         print ()
         cipher = Crypto1 (int2binarr (0x27568d75631f, 48))
         cipher.Output(1)
@@ -466,20 +499,21 @@ if __name__ == '__main__':
         for n in range (5):
             state = cipher.State ()[0::2]
             out = cipher.Output (2)
-            state = binarr2int(state)
-            print ('{}: {}'.format (out[0], hex(state)))
+            print ('{}: {} {}'.format (out[0][0], hex(binarr2int(state)), state))
+            print ('NLFC({})={}'.format (out[0][1], out[0][0]))
             #print ('next={} or {}'.format (hex(state>>1), hex((state>>1)|0x80000)))
-            assert (pipe.ComputeNLF (state) == out[0])
-
+            assert (pipe.ComputeNLF (state[0:20]) == out[0][0])
+        print ('Pipeline ComputeNLF OK...')
+        
         # Test search
         cipher = Crypto1 (int2binarr (0x27568d75631f, 48))
 
         # 10 search bits
-        search = cipher.Output (10)
-        #print ('Internal state after search: {}'.format (hex(binarr2int(cipher.State()))))
-        #print ('Internal state after search: {}'.format (cipher.State()))
-        #print ('Even: {}'.format (cipher.State()[0::2]))
-        #print ('Odd: {}'.format (cipher.State()[1::2]))
+        search = [x for x, y in cipher.Output (10)]
+        print ('Internal state after search: {}'.format (hex(binarr2int(cipher.State()))))
+        print ('Internal state after search: {}'.format (cipher.State()))
+        print ('Even: {}'.format (cipher.State()[0::2]))
+        print ('Odd: {}'.format (cipher.State()[1::2]))
         
         # 40 verify bits
         verify = cipher.Output (40)
@@ -487,13 +521,13 @@ if __name__ == '__main__':
         # Skip first bits, generated by enumerator
         # which we already pre-calculated
         search = search[2:]
-        #print ('Even search bits: {}'.format (search[0::2]))
-        #print ('Odd  search bits: {}'.format (search[1::2]))
+        print ('Even search bits: {}'.format (search[0::2]))
+        print ('Odd  search bits: {}'.format (search[1::2]))
         
-        # Compute shifted for each, pad LSB 4 bits
+        # Compute shifted for each
         pipe = Pipeline (0, [0, 0, 0, 0])
-        ekeys = pipe.ComputeShifted (0xe9fc70, search[0::2])
-        okeys = pipe.ComputeShifted (0x6512c0, search[1::2])
+        ekeys = pipe.ComputeShifted (0xe9fc7, search[0::2])
+        okeys = pipe.ComputeShifted (0x6512c, search[1::2])
                 
         # Iterate through possible keys
         for even in ekeys:
@@ -503,6 +537,8 @@ if __name__ == '__main__':
                 b = int2binarr (odd, 24)
 
                 # Rotate even right by one
+                print (a)
+                print (b)
                 a = [a[23]] + a[0:23]
                 
                 # Generate key

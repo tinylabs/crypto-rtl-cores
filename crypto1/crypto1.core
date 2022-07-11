@@ -41,9 +41,11 @@ targets:
         toplevel: [Crypto1Attack]
         tools:
             verilator:
-                verilator_options: [-sv, --cc, --trace, --clk, CLK, -O3]
+                verilator_options: [-sv, --cc, --trace, --clk, CLK]
                 run_options: [--vcd=attack.vcd, --timeout=20000]
-
+                make_options: [OPT_FAST="-Ofast -flto"]
+                #make_options: [-CFLAGS, -fprofile-generate, -LDFLAGS, -fprofile-generate]
+                
     sim:
         <<: *base
         default_tool: verilator

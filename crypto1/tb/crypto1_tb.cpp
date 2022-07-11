@@ -96,6 +96,7 @@ int main(int argc, char **argv, char **env)
 	delete utils;
 
     // Check output
+    printf ("OUTPUT=%llx\n", top->OUTPUT);
     assert (top->OUTPUT == 0x5a7be10a7259);
 	return 0;
 }

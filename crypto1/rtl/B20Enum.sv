@@ -71,7 +71,6 @@ module B20Enum
 
    // 15 bit counter arranged as 3 bit index for each function
    // Fb Fa Fa Fb Fa
-   //logic [19:0]        k20;
    always KEY20 = {Fb[sel[0]][ctr[14:12]], 
                    Fa[sel[1]][ctr[11:9]],
                    Fa[sel[2]][ctr[8:6]],
