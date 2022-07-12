@@ -26,6 +26,9 @@ module Crypto1Core #(
    );
 
 `include "crypto1.vh"
+
+   // LFSR taps       765432109876543210987654321098765432109876543210
+   parameter TAPS=48'b100001000110101101010000110101000001000101110000;
    
    // State machine
    typedef enum            logic [1:0] {
@@ -103,7 +106,7 @@ module Crypto1Core #(
            .DONE           (odd_done)
            );
 
-   logic [51:0]            lfsr[10];
+   logic [51:0]            lfsr [10];
    logic [10:0]            valid;
    genvar                  j, k;
 
@@ -133,19 +136,63 @@ module Crypto1Core #(
    logic [35:0] match8;
    logic [37:0] match9;
 
+   // Note: These intermediate wires are required for vivado synth
+   logic [47:0] b0, b1, b2, b3, b4, b5, b6, b7, b8, b9;
+   logic [47:0] b10, b11, b12, b13, b14, b15, b16, b17, b18, b19;
+   logic [47:0] b20, b21, b22, b23, b24, b25, b26, b27, b28, b29;
+   logic [47:0] b30, b31, b32, b33, b34, b35, b36, b37;
+   assign b0 = lfsr[0][50:3];
+   assign b1 = lfsr[0][49:2];
+   assign b2 = lfsr[0][48:1];
+   assign b3 = lfsr[0][47:0];
+   assign b4 = lfsr[1][50:3];
+   assign b5 = lfsr[1][49:2];
+   assign b6 = lfsr[1][48:1];
+   assign b7 = lfsr[1][47:0];
+   assign b8 = lfsr[2][50:3];
+   assign b9 = lfsr[2][49:2];
+   assign b10 = lfsr[2][48:1];
+   assign b11 = lfsr[2][47:0];
+   assign b12 = lfsr[3][50:3];
+   assign b13 = lfsr[3][49:2];
+   assign b14 = lfsr[3][48:1];
+   assign b15 = lfsr[3][47:0];
+   assign b16 = lfsr[4][50:3];
+   assign b17 = lfsr[4][49:2];
+   assign b18 = lfsr[4][48:1];
+   assign b19 = lfsr[4][47:0];
+   assign b20 = lfsr[5][50:3];
+   assign b21 = lfsr[5][49:2];
+   assign b22 = lfsr[5][48:1];
+   assign b23 = lfsr[5][47:0];
+   assign b24 = lfsr[6][50:3];
+   assign b25 = lfsr[6][49:2];
+   assign b26 = lfsr[6][48:1];
+   assign b27 = lfsr[6][47:0];
+   assign b28 = lfsr[7][50:3];
+   assign b29 = lfsr[7][49:2];
+   assign b30 = lfsr[7][48:1];
+   assign b31 = lfsr[7][47:0];
+   assign b32 = lfsr[8][50:3];
+   assign b33 = lfsr[8][49:2];
+   assign b34 = lfsr[8][48:1];
+   assign b35 = lfsr[8][47:0];
+   assign b36 = lfsr[9][50:3];
+   assign b37 = lfsr[9][49:2];
+
    // Note that lfsr[47:0] is represented on next LFSR[n+1] compute
    always @(posedge CLK)
      begin
-        match0 <= {        `Compute (lfsr[0][50:3]),`Compute (lfsr[0][49:2]),`Compute (lfsr[0][48:1]),`Compute (lfsr[0][47:0])};
-        match1 <= {match0, `Compute (lfsr[1][50:3]),`Compute (lfsr[1][49:2]),`Compute (lfsr[1][48:1]),`Compute (lfsr[1][47:0])};
-        match2 <= {match1, `Compute (lfsr[2][50:3]),`Compute (lfsr[2][49:2]),`Compute (lfsr[2][48:1]),`Compute (lfsr[2][47:0])};
-        match3 <= {match2, `Compute (lfsr[3][50:3]),`Compute (lfsr[3][49:2]),`Compute (lfsr[3][48:1]),`Compute (lfsr[3][47:0])};
-        match4 <= {match3, `Compute (lfsr[4][50:3]),`Compute (lfsr[4][49:2]),`Compute (lfsr[4][48:1]),`Compute (lfsr[4][47:0])};
-        match5 <= {match4, `Compute (lfsr[5][50:3]),`Compute (lfsr[5][49:2]),`Compute (lfsr[5][48:1]),`Compute (lfsr[5][47:0])};
-        match6 <= {match5, `Compute (lfsr[6][50:3]),`Compute (lfsr[6][49:2]),`Compute (lfsr[6][48:1]),`Compute (lfsr[6][47:0])};
-        match7 <= {match6, `Compute (lfsr[7][50:3]),`Compute (lfsr[7][49:2]),`Compute (lfsr[7][48:1]),`Compute (lfsr[7][47:0])};
-        match8 <= {match7, `Compute (lfsr[8][50:3]),`Compute (lfsr[8][49:2]),`Compute (lfsr[8][48:1]),`Compute (lfsr[8][47:0])};
-        match9 <= {match8, `Compute (lfsr[9][50:3]),`Compute (lfsr[9][49:2])};
+        match0 <= {        `Compute (b0), `Compute (b1), `Compute (b2), `Compute (b3)};
+        match1 <= {match0, `Compute (b4), `Compute (b5), `Compute (b6), `Compute (b7)};
+        match2 <= {match1, `Compute (b8), `Compute (b9), `Compute (b10),`Compute (b11)};
+        match3 <= {match2, `Compute (b12),`Compute (b13),`Compute (b14),`Compute (b15)};
+        match4 <= {match3, `Compute (b16),`Compute (b17),`Compute (b18),`Compute (b19)};
+        match5 <= {match4, `Compute (b20),`Compute (b21),`Compute (b22),`Compute (b23)};
+        match6 <= {match5, `Compute (b24),`Compute (b25),`Compute (b26),`Compute (b27)};
+        match7 <= {match6, `Compute (b28),`Compute (b29),`Compute (b30),`Compute (b31)};
+        match8 <= {match7, `Compute (b32),`Compute (b33),`Compute (b34),`Compute (b35)};
+        match9 <= {match8, `Compute (b36),`Compute (b37)};
      end // always @ (posedge CLK)
                       
    always @(posedge CLK)
@@ -226,8 +273,6 @@ module Crypto1Core #(
                valid <= {valid[9:0], 1'b0};
              
              case (state)
-               default:
-                 state <= WAIT_FULL;
                
                // Wait until both ring buffers full
                WAIT_FULL:

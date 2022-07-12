@@ -28,7 +28,26 @@ filesets:
             - verilator_utils
         files:
             - tb/tb.cpp : {file_type : cppSource}
-            
+
+    generator_deps:
+        depend:
+            - ahb3lite_intercon
+            - ahb3lite_csr
+
+    arty_top:
+        depend:
+            - ahb3lite_csr
+            - ahb3lite_host_master
+            - fifo
+            - uart_fifo
+        files:
+            - arty/arty_top.sv : {file_type : verilogSource}
+
+    arty_constraints:
+        files:
+            - arty/clocks.xdc : {file_type : xdc}
+            - arty/pins.xdc   : {file_type : xdc}
+
 targets:
     default: &base
         filesets: [rtl]
@@ -56,4 +75,76 @@ targets:
             verilator:
                 verilator_options: [-sv, --cc, --trace, --clk, CLK]
                 run_options: [--vcd=sim.vcd, --timeout=20000]
-        
+
+    synth:
+        default_tool: ise
+        description: Synthesize/PnR using yosys/ise
+        filesets: [rtl]
+        toplevel: [Crypto1Attack]
+        tools:
+            ise:
+                family: spartan2
+                device: xc2s30
+                package: vq100
+                speed: -5
+                #synth: ise
+                synth: yosys
+                #frontends: [surelog]
+                #yosys_synth_options: ['-iopad', '-family xc6', '-run :check', "frontend=surelog"]
+                #yosys_read_options: ['-noassert']
+                #surelog_options: ['-DSYNTHESIS']
+
+    arty:
+        <<: *base
+        description: Synthesize for Digilent Arty-A35T
+        default_tool: vivado
+        generate: [crypto1_csr, soc_intercon]
+        filesets_append: [generator_deps, arty_top, arty_constraints]
+        toplevel: [arty_top]
+        tools:
+            vivado:
+                part: xc7a35ticsg324-1L
+                #vivado-settings: /opt/xilinx/Vivado/2020.1/settings64.sh
+
+# Generators
+generate:
+    crypto1_csr:
+        generator: ahb3lite_csr_gen
+        parameters:
+            instance: ahb3_csr
+            registers:
+                id:
+                    width: 32
+                    type: ro
+                bitstream_lo:
+                    width: 32
+                    type: rw
+                bitstream_hi:
+                    width: 16
+                    type: rw
+                key_lo:
+                    width: 32
+                    type: ro
+                key_hi:
+                    width: 16
+                    type: ro
+                start:
+                    width: 1
+                    type: wo
+                done:
+                    width: 1
+                    type: ro
+                valid:
+                    width: 1
+                    type: ro
+                    
+    soc_intercon:
+        generator: ahb3lite_intercon_gen
+        parameters:
+            masters:
+                ahb3_host_master:
+                    priority: 0
+            slaves:
+                ahb3_csr:
+                    offset: 0
+                    size:   256

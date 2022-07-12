@@ -76,7 +76,6 @@ module B20Enum
                    Fa[sel[2]][ctr[8:6]],
                    Fb[sel[3]][ctr[5:3]],
                    Fa[sel[4]][ctr[2:0]]};
-   
    logic               started;
 
    always @(posedge CLK)

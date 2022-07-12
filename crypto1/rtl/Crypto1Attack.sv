@@ -36,7 +36,7 @@
  * # Test data
  * # key=0x27568d75631f
  * # key_found=ee3de5499562 (45 cycles past SR[0])
- * # output=0x5a7be10a7259ef48
+ * # output=0x5a7be10a7259
  */ 
 module Crypto1Attack
   (
@@ -49,18 +49,17 @@ module Crypto1Attack
    );
 
    logic [255:0]       valid, data, done;
-   logic               key_data, key_clk, all_done;
-   logic [7:0]         select;
+   logic               key_data, key_clk;
    logic [6:0]         ctr;
    
    // Instantiate 256 cores containing all combinations
    // of indices i,j
    genvar              i, j;
    generate
-//      for (i = 0; i < 16; i++) begin
-//         for (j = 0; j < 16; j++) 
-      for (i = 5; i < 6; i++) begin
-         for (j = 0; j < 1; j++) 
+      for (i = 0; i < 4; i++) begin
+        for (j = 0; j < 5; j++) 
+//      for (i = 5; i < 6; i++) begin
+//         for (j = 0; j < 1; j++) 
            begin : Crypto1Core
             Crypto1Core #(.EIDX(i), .OIDX(j), .RING_DEPTH(32))
               core
@@ -77,23 +76,16 @@ module Crypto1Attack
       end
    endgenerate
 
-   // MUX one-hot outputs
-   genvar              k;
-   generate for (k = 0; k < 256; k++)
-     begin : GEN_MUX
-        always @(posedge CLK)
-          if (valid == 2**k)
-            select <= 8'(k);
+   // MUX onehot valid signal
+   always_comb 
+     begin
+        key_data = '0;
+        for (int k = 0; k < 256; k++) begin
+           if (valid == (1 << k))
+             key_data = data[k];
+        end
      end
-   endgenerate
-
-   // Finished when one core finds key or 
-   // all have finished searching
-   always all_done = |valid | &done;
    
-   // Select corresponding key data
-   always key_data = data[select];
-
    always @(posedge CLK)
      if (~RESETn)
        begin
@@ -104,6 +96,7 @@ module Crypto1Attack
        end
      else
        begin
+
           // Found key
           if (|valid)
             begin
@@ -124,7 +117,7 @@ module Crypto1Attack
             end
 
           // Key not found
-          else if (&done)
+          else if ($countones (done) == 20)
             DONE <= 1;
        end
 
