@@ -106,10 +106,15 @@ if __name__ == '__main__':
         # Use monte-carlo random num gen to create key
         key = hex(random.randint (1, 2**48))
         args.get_idx = key
-        print ('Key={}'.format (key))
         
     # Get even/odd index for key
     if args.get_idx:
+
+        print ('Key={}'.format (args.get_idx))
+
+        # Get bitstream
+        cipher = Crypto1 (state=int(args.get_idx, 0))
+        bs = cipher.Raw (64)
 
         # Create
         cipher = Crypto1 (state=int(args.get_idx, 0))
@@ -133,3 +138,5 @@ if __name__ == '__main__':
         # Get odd idx
         print ('Odd={}'.format (idx))
 
+        # Print bitstream
+        print ('Bitstream={}'.format (hex (binarr2int (bs))))
