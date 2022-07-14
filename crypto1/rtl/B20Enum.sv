@@ -9,14 +9,13 @@
  */
 
 module B20Enum
-  #(
-    parameter [3:0] IDX )
    (
     input               CLK,
     input               RESETn,
     input               BIT_IN,
     input               STB,
-    output logic [19:0] KEY20,
+    input [3:0]         IDX,
+    output logic [19:0] KEY20, 
     output logic        DONE
     );
 

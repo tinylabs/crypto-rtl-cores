@@ -36,8 +36,8 @@ module RingBuf
    logic                     data_valid;
    
    // Read while data is available and not full
-   always FIFO_RDEN = ~FIFO_RDEMPTY & (widx < DEPTH - 1);
-   always FULL = (widx == DEPTH);
+   always FIFO_RDEN = ~FIFO_RDEMPTY & (widx < $clog2(DEPTH+1)'(DEPTH - 1));
+   always FULL = (widx == $clog2(DEPTH+1)'(DEPTH));
    always END = (ridx == (widx - 1));
    always DONE = (FIFO_DONE & END);
                 

@@ -49,6 +49,7 @@ class FPGACrypto1:
 
         # Start recovery
         self.flex.WriteByte (0x18, 0)
+        time.sleep (0.1)
         self.flex.WriteByte (0x18, 1)
 
         # Wait for completion
@@ -92,7 +93,8 @@ if __name__ == '__main__':
 
         # Create random key
         rkey = random.randint (1, 2**48)
-
+        #rkey = 0xac6e61b52810
+        
         # Generate output bitstream
         c = Crypto1 (state=rkey)
         bs = binarr2int (c.Raw (48))

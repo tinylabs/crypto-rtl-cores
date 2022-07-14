@@ -10,19 +10,18 @@
  * 2022
  */
 
-module Crypto1Core #(
-                     parameter [3:0] EIDX,
-                     parameter [3:0] OIDX,
-                     parameter RING_DEPTH
+module Crypto1Core 
+  #(
+    parameter RING_DEPTH = 32
     ) (
-       input        CLK,
-       input        RESETn,
-       input [47:0] BITSTREAM,
-       output logic DONE,
-       // Clock out key data using serial stream
-       output logic KEY_DATA,
-       input        KEY_CLK,
-       output logic KEY_VALID
+       input               CLK,
+       input               RESETn,
+       input [47:0]        BITSTREAM,
+       input [3:0]         EIDX,
+       input [3:0]         OIDX,
+       output logic        DONE,
+       output logic        VALID,
+       output logic [47:0] KEY
    );
 
 `include "crypto1.vh"
@@ -51,20 +50,21 @@ module Crypto1Core #(
    logic [$clog2(RING_DEPTH):0] ridx;
  
    // Even subkey generator
-   GenSubkey #( .IDX (EIDX) )
-   u_even (
-           .CLK            (CLK),
-           .RESETn         (RESETn),
-           .BITSTREAM      ({BITSTREAM[39],
-                             BITSTREAM[41],
-                             BITSTREAM[43],
-                             BITSTREAM[45],
-                             BITSTREAM[47]}),
-           .SUBKEY_RDEN    (efifo_rden),
-           .SUBKEY_RDDATA  (efifo_rddata),
-           .SUBKEY_RDEMPTY (efifo_rdempty),
-           .DONE           (even_done)
-           );
+   GenSubkey
+     u_even (
+             .CLK            (CLK),
+             .RESETn         (RESETn),
+             .BITSTREAM      ({BITSTREAM[39],
+                               BITSTREAM[41],
+                               BITSTREAM[43],
+                               BITSTREAM[45],
+                               BITSTREAM[47]}),
+             .IDX            (EIDX),
+             .SUBKEY_RDEN    (efifo_rden),
+             .SUBKEY_RDDATA  (efifo_rddata),
+             .SUBKEY_RDEMPTY (efifo_rdempty),
+             .DONE           (even_done)
+             );
 
    // Ring buffer connector to subkey generator
    RingBuf #(
@@ -91,19 +91,20 @@ module Crypto1Core #(
    logic [47:0]            key, key_save;
    
    // Odd subkey generator
-   GenSubkey #( .IDX (OIDX) )
-   u_odd (
-           .CLK            (CLK),
-           .RESETn         (RESETn & odd_reset_n),
-           .BITSTREAM      ({BITSTREAM[38],
-                             BITSTREAM[40],
-                             BITSTREAM[42],
-                             BITSTREAM[44],
-                             BITSTREAM[46]}),
-           .SUBKEY_RDEN    (ofifo_rden),
-           .SUBKEY_RDDATA  (odd_subkey),
-           .SUBKEY_RDEMPTY (ofifo_rdempty),
-           .DONE           (odd_done)
+   GenSubkey
+     u_odd (
+            .CLK            (CLK),
+            .RESETn         (RESETn & odd_reset_n),
+            .BITSTREAM      ({BITSTREAM[38],
+                              BITSTREAM[40],
+                              BITSTREAM[42],
+                              BITSTREAM[44],
+                              BITSTREAM[46]}),
+            .IDX            (OIDX),
+            .SUBKEY_RDEN    (ofifo_rden),
+            .SUBKEY_RDDATA  (odd_subkey),
+            .SUBKEY_RDEMPTY (ofifo_rdempty),
+            .DONE           (odd_done)
            );
 
    logic [51:0]            lfsr [10];
@@ -204,7 +205,7 @@ module Crypto1Core #(
              ring_rden <= 0;
              valid <= 0;
              DONE <= 0;
-             KEY_VALID <= 0;
+             VALID <= 0;
           end
         else
           begin
@@ -215,9 +216,9 @@ module Crypto1Core #(
              // Check key
              if (valid[10] && (match9 == BITSTREAM[37:0]))
                begin
-                  KEY_VALID <= 1;
+                  VALID <= 1;
                   state <= FINISHED;
-                  key <= key_save;
+                  KEY <= key_save;
                end
                          
              // Generate 48 bits of LFSR from even/odd subkeys
@@ -322,7 +323,6 @@ module Crypto1Core #(
                       end
 
                  end // case: COMPARE
-
                
                // Wait til pipeline is empty
                WAIT_FINISH:
@@ -334,14 +334,6 @@ module Crypto1Core #(
                FINISHED:
                  begin
                     DONE <= 1;
-                    if (KEY_VALID)
-                      begin
-                         if (KEY_CLK)
-                           begin
-                              KEY_DATA <= key[47];
-                              key <= {key[46:0], 1'b0};
-                           end
-                      end
                  end
              endcase // case (state)
 

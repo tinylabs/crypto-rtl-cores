@@ -103,6 +103,12 @@ class Crypto1:
         # Main crypto1 state
         self.sr = LFSR (initstate=key,fpoly=poly)
 
+        # Save even start
+        self.start = self.ComputePartial ()
+
+    def Start (self):
+        return self.start
+    
     def State (self):
         return self.sr.state[::-1]
     
@@ -122,7 +128,27 @@ class Crypto1:
             idx -= 1
         return nkey
 
-    def ComputeNLF (self, idx):
+    def ComputePartial (self):
+        # 3 NLFs in two layers
+        nla = NLF(0x9e98)
+        nlb = NLF(0xb48e)
+        nlc = NLF(0xec57e80a)
+
+        # Calculate layer one
+        s = self.sr.state
+        a = nla.compute ([s[0],  s[2],  s[4],  s[6]])
+        b = nlb.compute ([s[8],  s[10], s[12], s[14]])
+        c = nla.compute ([s[16], s[18], s[20], s[22]])
+        d = nla.compute ([s[24], s[26], s[28], s[30]])
+        e = nlb.compute ([s[32], s[34], s[36], s[38]])
+        layer1 = [nla.compute ([s[0],  s[2],  s[4],  s[6]]),
+                  nlb.compute ([s[8],  s[10], s[12], s[14]]),
+                  nla.compute ([s[16], s[18], s[20], s[22]]),
+                  nla.compute ([s[24], s[26], s[28], s[30]]),
+                  nlb.compute ([s[32], s[34], s[36], s[38]])]
+        return layer1
+    
+    def ComputeNLF (self):
         # 3 NLFs in two layers
         nla = NLF(0x9e98)
         nlb = NLF(0xb48e)
@@ -144,10 +170,10 @@ class Crypto1:
         # Get output from NLF layers
         return nlc.compute (layer1)
 
-    def GetBit (self, idx, inp=0, encrypt=False):
+    def GetBit (self, inp=0, encrypt=False):
 
         # Compute NLF
-        b = self.ComputeNLF (idx)
+        b = self.ComputeNLF ()
         #print ('NLF={} state={}'.format (b, self.sr.state))
         
         # Cycle LFSR with feedback
@@ -204,7 +230,7 @@ class Crypto1:
         else:
             inp = inp[::-1]
         for n in range (cnt):
-            ret.append (self.GetBit(n, inp[n]))
+            ret.append (self.GetBit(inp[n]))
         return ret
 
     @staticmethod
@@ -233,9 +259,3 @@ class Crypto1:
         ret |= self.GetByte ((inp >> 8) & 0xFF, encrypt) << 8;
         ret |= self.GetByte ((inp >> 0) & 0xFF, encrypt) << 0;
         return ret
-        
-if __name__ == '__main__':
-
-    # Init the cipher
-    cipher = Crypto1(state=0x27568d75631f)
-    print (hex(binarr2int (cipher.Raw (48))))

@@ -7,7 +7,7 @@ filesets:
         depend:
             - fifo
         files:
-            - rtl/Crypto1Attack.sv
+            #- rtl/Crypto1Attack.sv
             - rtl/B20Enum.sv
             - rtl/Crypto1Core.sv
             - rtl/GenSubkey.sv
@@ -27,7 +27,7 @@ filesets:
         depend:
             - verilator_utils
         files:
-            - tb/tb.cpp : {file_type : cppSource}
+            - tb/Crypto1Core_tb.cpp : {file_type : cppSource}
 
     generator_deps:
         depend:
@@ -51,13 +51,15 @@ filesets:
 targets:
     default: &base
         filesets: [rtl]
-
+        parameters: [RING_DEPTH=32]
+        
     attack:
         <<: *base
         default_tool: verilator
         description: Simulate Crypto1 attack using verilator
         filesets: [rtl, attack_tb]
-        toplevel: [Crypto1Attack]
+        toplevel: [Crypto1Core]
+        parameters: [RING_DEPTH=32]
         tools:
             verilator:
                 verilator_options: [-sv, --cc, --trace, --clk, CLK]
@@ -79,7 +81,7 @@ targets:
     synth:
         default_tool: ise
         description: Synthesize/PnR using yosys/ise
-        filesets: [rtl]
+        filesets: [rtlv]
         toplevel: [Crypto1Attack]
         tools:
             ise:
@@ -148,3 +150,11 @@ generate:
                 ahb3_csr:
                     offset: 0
                     size:   256
+
+parameters:
+    RING_DEPTH:
+        datatype: int
+        default: 32
+        description: Depth of ring buffer
+        paramtype: vlogparam
+        

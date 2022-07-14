@@ -6,18 +6,19 @@
  * 2022
  */
 
-module GenSubkey #( parameter [3:0] IDX
-                   ) (
-                      input               CLK,
-                      input               RESETn,
-                      input [4:0]         BITSTREAM,
-                      // Finished enumerating subkeys
-                      output logic        DONE,
-                      // Output FIFO of subkeys
-                      output logic [23:0] SUBKEY_RDDATA,
-                      input               SUBKEY_RDEN,
-                      output logic        SUBKEY_RDEMPTY
-                      );
+module GenSubkey 
+  (
+   input               CLK,
+   input               RESETn,
+   input [4:0]         BITSTREAM,
+   input [3:0]         IDX,
+   // Finished enumerating subkeys
+   output logic        DONE,
+   // Output FIFO of subkeys
+   output logic [23:0] SUBKEY_RDDATA,
+   input               SUBKEY_RDEN,
+   output logic        SUBKEY_RDEMPTY
+   );
 
    typedef enum logic [2:0] {
                              GENERATE      = 0, // Generate even/odd subkeys
@@ -51,16 +52,16 @@ module GenSubkey #( parameter [3:0] IDX
 
 
    // 20 bit key enumerator
-   B20Enum #(
-             .IDX (IDX))
-   u_b20
-   (
-    .CLK    (CLK),
-    .RESETn (RESETn),
-    .BIT_IN (BITSTREAM[0]),
-    .STB    (gen_stb),
-    .KEY20  (k20),
-    .DONE   (done));
+   B20Enum
+     u_b20
+       (
+        .CLK    (CLK),
+        .RESETn (RESETn),
+        .BIT_IN (BITSTREAM[0]),
+        .IDX    (IDX),
+        .STB    (gen_stb),
+        .KEY20  (k20),
+        .DONE   (done));
 
    // Output FIFO
    fifo #(
